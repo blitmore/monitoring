@@ -1,0 +1,406 @@
+#!/usr/bin/env python3
+
+
+## 
+## This script requires nagiosplugins to be available to python. 
+## 
+
+import nagiosplugin
+import nagiosplugin.context
+import argparse
+import logging
+import subprocess
+import ipaddress
+import socket
+
+from urllib.request import urlopen, Request
+from urllib.parse import urlencode
+from urllib.error import HTTPError, URLError
+import sys
+import json
+
+
+_log = logging.getLogger('nagiosplugin')
+
+class checkNode(nagiosplugin.Resource):
+    """Domain model: node metrics and diagnostics.
+
+    Attempts to query a tBTCv2 node.
+    The `probe` method returns .
+    """
+
+    def __init__(self, nodeip=False, port=False, owner=False):
+        self.nodeip = nodeip
+        self.port   = port
+        self.owner  = owner
+
+        self.btc_connectivity = 0
+        self.client_version = None
+        self.bootstrap_nodecount = None
+        self.peer_nodecount = None
+        self.eth_connectivity = None
+        self.pp_files = None
+
+
+    @staticmethod
+    def retrieveNodeData(self, mode):
+        self.validIP()
+
+        headers = { 'Content-Type': 'application/json' }
+        url = "http://" + str(self.nodeip) + ":" + str(self.port) + "/" + mode
+        request = Request(url, headers=None or {} )
+        timeout = 3
+
+        #print(f"{url}")
+
+        try:
+            with urlopen(request, timeout = timeout) as response:
+
+                ## response.read() returns bytes
+                body = response.read()
+
+                ## "metrics" does NOT return json, it returns bytes: b'....'
+                if mode == "metrics":
+                    ## body.decode converts and returns a string
+                    self.decodedBody = body.decode("utf-8")
+                    #_log.info('\n--\t body converted to utf-8: \n%s', self.decodedBody)
+
+                    self.parseMetrics(self.decodedBody)
+                    #_log.info('\n--\t after parsing: \n%s', self.bootstrap_nodecount)
+
+                ## "diagnostics" returns json
+                elif mode  == "diagnostics" :
+                    data = json.loads(body.decode("utf-8"))
+                    #self.diagnostics = data
+                    self.parseDiags(data)
+                else :
+                    return False
+
+        except Exception as e:
+            print(f"\t retrieveNodeData ERROR: {e}\n{self.nodeip}:{self.port}")
+
+
+    def validIP(self):
+        ip = ""
+
+        ## DNS lookup        
+        if any(letter.isalpha() for letter in self.nodeip):
+            try: 
+                ip = format(ipaddress.IPv4Address(socket.gethostbyname(self.nodeip)))
+            except: 
+                return False
+
+        ## straight up IP check
+        elif ipaddress.IPv4Address(self.nodeip) :
+            ip = self.nodeip
+
+        self.nodeip = ip
+
+
+    #def parseMetrics(self, decodedBody):
+        """
+        client_info{version="v2.0.0-m1"} 1
+
+        # TYPE connected_bootstrap_count gauge
+        connected_bootstrap_count 2 1668033348259
+
+        # TYPE connected_peers_count gauge
+        connected_peers_count 65 1668033348259
+
+        # TYPE eth_connectivity gauge
+        eth_connectivity 1 1668032808257
+
+        # TYPE tbtc_pre_params_count gauge
+        tbtc_pre_params_count 1000 1668033349676
+        """
+        #self.client_version  = decodedBody.split('"')[1]
+        #node_metrics = ''.join(decodedBody).split()
+
+        #self.bootstrap_nodecount = int(node_metrics[7])
+        #self.peer_nodecount      = int(node_metrics[14])
+        #self.eth_connectivity    = bool(node_metrics[21])
+        #self.pp_files            = int(node_metrics[28])
+
+    def parseMetrics(self, decodedBody):
+
+        ## EXAMPLE:
+
+        ## TYPE btc_connectivity gauge
+        #btc_connectivity 1 1690991684431
+        #
+        #client_info{version="v2.0.0-m4"} 1
+        #
+        ## TYPE connected_bootstrap_count gauge
+        #connected_bootstrap_count 7 1690991744114
+        #
+        ## TYPE connected_peers_count gauge
+        #connected_peers_count 144 1690991744114
+        #
+        ## TYPE eth_connectivity gauge
+        #eth_connectivity 1 1690991684113
+
+        #0: #
+        #1: TYPE
+        #2: btc_connectivity
+        #3: gauge
+        #4: btc_connectivity
+        #5: 1
+        #6: 1690992284432
+        #7: client_info{version="v2.0.0-m4"}
+        #8: 1
+        #9: #
+        #10: TYPE
+        #11: connected_bootstrap_count
+        #12: gauge
+        #13: connected_bootstrap_count
+        #14: 7
+        #15: 1690992704114
+        #16: #
+        #17: TYPE
+        #18: connected_peers_count
+        #19: gauge
+        #20: connected_peers_count
+        #21: 143
+        #22: 1690992704114
+        #23: #
+        #24: TYPE
+        #25: eth_connectivity
+        #26: gauge
+        #27: eth_connectivity
+        #28: 1
+        #29: 1690992284114
+        #30: #
+        #31: TYPE
+        #32: tbtc_pre_params_count
+        #33: gauge
+        #34: tbtc_pre_params_count
+        #35: 1000
+        #36: 1690992705172
+
+        self.client_version  = decodedBody.split('"')[1]
+        metrics = ''.join(decodedBody).split()
+        #print(f"{metrics}")
+
+        #self.client_version      = self.metrics.split('"')[1]
+        #metrics = ''.join(self.metrics).split()
+        self.lenmetrics = len(metrics)
+
+        #print(f"{metrics}")
+        self.btc_connectivity    = int(metrics[5])
+        self.bootstrap_nodecount = int(metrics[14])
+        self.peer_nodecount      = int(metrics[21])
+        self.eth_connectivity    = int(metrics[28])
+        self.pp_files = int(metrics[35]) if True else 0
+
+
+
+
+    def parseDiags(self, decodedBody):
+        ## client_info
+        #_log.warning('parseDiags: %s', decodedBody)
+        
+        self.opAddr    = decodedBody['client_info']['chain_address']
+        #_log.warning('opAddr: %s', self.opAddr)
+        self.networkId = decodedBody['client_info']['network_id']
+        self.revision  = decodedBody['client_info']['revision']
+
+        #for opAddr,multiAddr,networkID in self.diagnostics['connected_peers']:
+        self.peers  =  decodedBody['connected_peers']
+
+
+    def getBalance(self, opaddr, gethnode):
+
+        balance_dict = {
+                    'jsonrpc':'2.0',
+                    'method':'eth_getBalance',
+                    'params':[opaddr, 'latest'],
+                    'id':1
+                }
+
+        json_string = json.dumps(balance_dict)
+        #print(f"json_string: {json_string}")
+
+        post_data = json_string.encode("utf-8")
+        #print(f"post_data: {post_data}")
+
+        headers = { 'Content-Type': 'application/json' }
+        url = gethnode
+
+        try:
+            request = Request(url, headers=headers or {} )
+
+            with urlopen(request, data=post_data) as response:
+                body = response.read()
+                geth_node_data = json.loads(body.decode("utf-8"))
+                #print(f"geth_node_data: {geth_node_data}")
+
+                balance =  int(geth_node_data["result"], 16) * .000000000000000001
+                #print(f"balance: {balance}")
+
+                return round(balance,2)
+
+        except Exception as e:
+            #print(f"\tgetBalance ERROR: {e}")
+            return 0.00
+
+
+
+    def setBalance(self, balance):
+        self.operator_balance = balance
+
+
+
+
+    ##  Resource classes must define a Resource.probe() method which returns a list of Metrics,
+    ##  a single Metric or a Metric generator (via yield ).
+    def probe(self):
+        _log.info('self.probe: checking node: %s:%i', self.nodeip, self.port)
+        self.retrieveNodeData(self, 'metrics')
+        #self.retrieveNodeData(self, 'diagnostics')
+
+        #_log.info('%s', self.client_version)
+        #_log.info('connectivity: %s', self.eth_connectivity)
+        #_log.info('opAddr: %s', self.opAddr)
+        #self.setBalance(self.getBalance(self.opAddr, gethnodes[0]))
+
+        """
+                Metric
+            A single measured data point. 
+            A metric consists of a name, a value, a unit, and optional minimum and maximum bounds. 
+            Most metrics are scalar (the value can be represented as single number).
+        """
+
+        ## order here seems to matter?
+        #return nagiosplugin.Metric("peers", self.peer_nodecount, min=2 )
+        return [ 
+            #nagiosplugin.Metric("client", self.client_version, context="node" ),
+            nagiosplugin.Metric("btc_connectivity", self.btc_connectivity),
+            nagiosplugin.Metric("peers", self.peer_nodecount),
+            nagiosplugin.Metric("bootpeers", self.bootstrap_nodecount),
+            nagiosplugin.Metric("eth_connectivity", self.eth_connectivity),
+            nagiosplugin.Metric("pp_files", self.pp_files)
+            #nagiosplugin.Metric("operator_balance", self.operator_balance)
+            ]
+
+
+
+class LoadSummary(nagiosplugin.Summary):
+    """Status line conveying load information.
+
+    We specialize the `ok` method to present all three figures in one
+    handy tagline. In case of problems, the single-load texts from the
+    contexts work well.
+    """
+
+    #def __init__(self, nodeip):
+    #def __init__(self):
+        #self.percpu = peercount
+
+    def ok(self, results):
+        #qualifier = 'per cpu ' if self.percpu else ''
+        #return 'loadavg %sis %s' % (qualifier, ', '.join(
+        #    str(results[r].metric) for r in ['load1', 'load5', 'load15']))
+        #for x in results:
+        #    _log.warning("%s is type(%s)", x.resource, type(x))
+        #_log.warning("%s", results)
+
+        #return 'loadavg %s' % results.name
+        return 'ALL CHECKS PASSED' 
+
+
+
+def validPort(port):
+    print(f"validPort")
+    return int(port) if ( (int(port) < 65535) and (int(port) > 1024 )) else False
+
+
+#gethnodes = [ "http://...:8545",
+#              "https://goerli.infura.io/v3/..."
+#            ]
+
+
+
+@nagiosplugin.guarded
+def main():
+
+    argp = argparse.ArgumentParser(description='tBTCv2 node check')
+    #print(f"{argp}")
+
+    argp.add_argument('nodeip', 
+            default="", 
+            #type=ipaddress.ip_address, 
+            #type=validIP,
+            help='node <ipaddr>')
+
+    argp.add_argument('-p', '--port', 
+            default=9601, 
+            type=validPort, 
+            help='metrics/diagnostics port, default 9601')
+
+    argp.add_argument('-o', '--owner', 
+            default=None, 
+            help='friendly name for a known node')
+
+    ## see Range for explanation of setting syntax.
+    ## '@~:2'  indicates "outside the range ~ (negative infinity  to 2", e.g
+    ##  less than 6 peers gives a warning, less than 2 is critical
+    argp.add_argument('-pw', '--peercountwarning', metavar='RANGE', default='@~:5',
+                  help='warning if peer count is outside RANGE')
+
+    argp.add_argument('-pc', '--peercountcritical', metavar='RANGE', default='@~:1',
+                  help='critical if peer count is outside RANGE')
+
+    ##  less than 2 boot peers gives a warning, less than 1 is critical
+    argp.add_argument('-bw', '--bootpeerwarning', metavar='RANGE', default='@~:0',
+                  help='warning if boot peer count is outside RANGE')
+
+    argp.add_argument('-bc', '--bootpeercritical', metavar='RANGE', default='@~:0',
+                  help='critical if boot peer count is outside RANGE')
+
+    argp.add_argument('-v', '--verbose', action='count', default=0,
+                  help='increase output verbosity (use up to 3 times)')
+
+
+    #print(f"{argp}")
+    args = argp.parse_args()
+   
+    #print(f"{args}")
+    #print(f"{type(args)}")
+
+
+
+    ## ##############################################
+    ##  conditions for a node to report back "OK":
+    ## ##############################################
+    ## 
+    ##  less than 6 peers gives warning
+    ##  less than 2 peers gives a critical
+    ##  less than 2 boot peers gives a warning
+    ##  less than 1 boot peers gives a critical
+    ##  eth connectivity MUST be 1, or get a critical warning.
+    ##  pp file count must exceed 1000 or get a warning 
+    ## 
+    
+    check = nagiosplugin.Check(checkNode(args.nodeip, args.port, args.owner),
+
+            ## check that we have more than one peer ( and less than 20000 )
+            nagiosplugin.ScalarContext('btc_connectivity', '@~:0', '@~:0', fmt_metric='{value} btc connectivity'),
+            nagiosplugin.ScalarContext('peers', args.peercountwarning, args.peercountcritical, fmt_metric='{value} peers'),
+            ##                           ^                ^                  ^                
+            ##                           |                |                  |                
+            ##                        context    warnrange (-:<int>)  criticalrange (-:<int>)
+            ##                           |                |                  |                
+
+            nagiosplugin.ScalarContext('bootpeers', args.bootpeerwarning, args.bootpeercritical, fmt_metric='{value} boot peers'),
+            nagiosplugin.ScalarContext('eth_connectivity', '@~:0', '@~:0', fmt_metric='{value} eth connectivity'),
+            nagiosplugin.ScalarContext('pp_files', '1000:', '1000:', fmt_metric='{value} pp_files'),
+            #nagiosplugin.ScalarContext('operator_balance', '@~:.49', '@~:.09', fmt_metric='{value} Eth'),
+            LoadSummary()
+            )
+
+    check.main(verbose=args.verbose)
+    #check.main()
+
+
+if __name__ == '__main__':
+    main()
