@@ -97,30 +97,6 @@ class checkNode(nagiosplugin.Resource):
         self.nodeip = ip
 
 
-    #def parseMetrics(self, decodedBody):
-        """
-        client_info{version="v2.0.0-m1"} 1
-
-        # TYPE connected_bootstrap_count gauge
-        connected_bootstrap_count 2 1668033348259
-
-        # TYPE connected_peers_count gauge
-        connected_peers_count 65 1668033348259
-
-        # TYPE eth_connectivity gauge
-        eth_connectivity 1 1668032808257
-
-        # TYPE tbtc_pre_params_count gauge
-        tbtc_pre_params_count 1000 1668033349676
-        """
-        #self.client_version  = decodedBody.split('"')[1]
-        #node_metrics = ''.join(decodedBody).split()
-
-        #self.bootstrap_nodecount = int(node_metrics[7])
-        #self.peer_nodecount      = int(node_metrics[14])
-        #self.eth_connectivity    = bool(node_metrics[21])
-        #self.pp_files            = int(node_metrics[28])
-
     def parseMetrics(self, decodedBody):
 
         ## EXAMPLE:
@@ -138,7 +114,8 @@ class checkNode(nagiosplugin.Resource):
         #
         ## TYPE eth_connectivity gauge
         #eth_connectivity 1 1690991684113
-
+     
+        ## Field:  example value
         #0: #
         #1: TYPE
         #2: btc_connectivity
@@ -181,18 +158,13 @@ class checkNode(nagiosplugin.Resource):
         metrics = ''.join(decodedBody).split()
         #print(f"{metrics}")
 
-        #self.client_version      = self.metrics.split('"')[1]
-        #metrics = ''.join(self.metrics).split()
         self.lenmetrics = len(metrics)
 
-        #print(f"{metrics}")
         self.btc_connectivity    = int(metrics[5])
         self.bootstrap_nodecount = int(metrics[14])
         self.peer_nodecount      = int(metrics[21])
         self.eth_connectivity    = int(metrics[28])
         self.pp_files = int(metrics[35]) if True else 0
-
-
 
 
     def parseDiags(self, decodedBody):
@@ -244,11 +216,8 @@ class checkNode(nagiosplugin.Resource):
             return 0.00
 
 
-
     def setBalance(self, balance):
         self.operator_balance = balance
-
-
 
 
     ##  Resource classes must define a Resource.probe() method which returns a list of Metrics,
@@ -291,10 +260,6 @@ class LoadSummary(nagiosplugin.Summary):
     handy tagline. In case of problems, the single-load texts from the
     contexts work well.
     """
-
-    #def __init__(self, nodeip):
-    #def __init__(self):
-        #self.percpu = peercount
 
     def ok(self, results):
         #qualifier = 'per cpu ' if self.percpu else ''
@@ -399,7 +364,6 @@ def main():
             )
 
     check.main(verbose=args.verbose)
-    #check.main()
 
 
 if __name__ == '__main__':
