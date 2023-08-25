@@ -5,28 +5,27 @@ tBTC nodes listen by default on port 9601 for monitoring requests to the
 
 ## Structure
 
-- `check_tbtc`: the python plugin script. Note the `.py` extension is not used for nagios plugins, maybe 
-   due to parsing. 
+- **`check_tbtc`** - *The plugin script. Note that though written in python the `.py` extension is not used for nagios plugins. I forget why, maybe due to parsing.*
 
-- `tbtcnode.cfg`: nagios configuration file for each node to be monitored.
+- **`tbtcnode.cfg`** - *nagios configuration file for each node to be monitored.*
 
-- `threshold_logo_75x75.png`: nagios icon_image
+- **`threshold_logo_75x75.png`** - *Threshold logo nagios icon_image*
 
-- `nagios.cfg`: Contains a configuration line which must be added to the extant `nagios.cfg` to 
-   activate the plugin. 
+- **`nagios.cfg`** -  *A line which must be added to the extant `nagios.cfg` to activate the plugin, as mentioned below.*
 
-- `command.cfg`: Contains a configuration line which must be added to the extant `commands.cfg` to 
-   run the plugin. 
+- **`command.cfg`** - *Configuration lines which must be added to the extant `commands.cfg` to run the plugin, mentioned below.*
 
 
 
 ## Installation and Configuration Requirements
+
 Ensure the [Class library for writing Nagios (Icinga) plugins](https://pypi.org/project/nagiosplugin/) are installed, and available to the nagios installation:
 
 ```bash
 > pip3 install -U nagiosplugin
 ```
--or maybe-
+*-or maybe-*
+
 ```bash
 > pip install -U nagiosplugin
 ```
@@ -54,7 +53,8 @@ Copy the icon image file, `threshold_logo_75x75.png`, to the ../nagios/share/ima
 
 
 
-### Configuration
+## Configuration
+
 Edit `..nagios/etc/objects/commands.cfg` and add the following commentary + definition: 
 ```bash
 # 'check_tbtc_node' command definition
@@ -76,18 +76,26 @@ Edit the tbtcnode.cfg file to set elements like these accordingly:
 ```
 
 
-## Mic Check:
+## See if it works. If not, fix:
+
 ```bash
 > nagios -v <path-to-nagios.cfg>
 ```
 
 
 
-#### Manual usage (from within .../nagios/libexec/) :
+## For Manual usage (*from within .../nagios/libexec/*) :
 
 ```bash
   ./check_tbtc_node <ipaddress|FQDN> \
 ```
 
+## Example output: 
+```bash
+./check_tbtc xyz.abc
+CHECKNODE OK - ALL CHECKS PASSED
+self.probe: checking node: xyz.abc:9601
+| bootpeers=7;@~:0;@~:0 btc_connectivity=1;@~:0;@~:0 eth_connectivity=1;@~:0;@~:0 peers=141;@~:5;@~:1 pp_files=1000;1000:;1000:
+```
 
 
