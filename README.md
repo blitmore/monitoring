@@ -1,7 +1,8 @@
 # Nagios plugin to monitor Threshold Network tBTC nodes
 
 tBTC nodes listen by default on port 9601 for monitoring requests to the 
-`/metrics` and `/diagnostics` URIs. 
+`/metrics` and `/diagnostics` URIs. A version exists which will determine the operator
+address and check it for sufficient ETH.
 
 ## Structure
 
