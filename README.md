@@ -88,7 +88,32 @@ Edit the tbtcnode.cfg file to set elements like these accordingly:
 ## For Manual usage (*from within .../nagios/libexec/*) :
 
 ```bash
-  ./check_tbtc_node <ipaddress|FQDN> \
+> ./check_tbtc_node <ipaddress|FQDN> 
+```
+
+
+```bash
+> ./check_tbtc_node -h
+usage: check_tbtc_node [-h] [-p PORT] [-pw RANGE] [-pc RANGE] [-bw RANGE] [-bc RANGE] [-v] nodeip
+tBTCv2 node check
+
+positional arguments:
+  nodeip                node <ipaddr>
+
+options:
+  -h, --help            show this help message and exit
+  -p PORT, --port PORT  metrics/diagnostics port, default 9601
+  -o OWNER, --owner OWNER
+                        friendly name for a known node
+  -pw RANGE, --peercountwarning RANGE
+                        warning if peer count is outside RANGE
+  -pc RANGE, --peercountcritical RANGE
+                        critical if peer count is outside RANGE
+  -bw RANGE, --bootpeerwarning RANGE
+                        warning if boot peer count is outside RANGE
+  -bc RANGE, --bootpeercritical RANGE
+                        critical if boot peer count is outside RANGE
+  -v, --verbose         increase output verbosity (use up to 3 times)
 ```
 
 ## Example output: 
