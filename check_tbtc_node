@@ -51,8 +51,6 @@ class checkNode(nagiosplugin.Resource):
         request = Request(url, headers=None or {} )
         timeout = 3
 
-        #print(f"{url}")
-
         try:
             with urlopen(request, timeout = timeout) as response:
 
@@ -306,7 +304,7 @@ def main():
             default=None, 
             help='friendly name for a known node')
 
-    ## see Range for explanation of setting syntax.
+    ## see nagiosplugin Range for explanation of setting syntax.
     ## '@~:2'  indicates "outside the range ~ (negative infinity  to 2", e.g
     ##  less than 6 peers gives a warning, less than 2 is critical
     argp.add_argument('-pw', '--peercountwarning', metavar='RANGE', default='@~:5',
@@ -326,13 +324,8 @@ def main():
                   help='increase output verbosity (use up to 3 times)')
 
 
-    #print(f"{argp}")
     args = argp.parse_args()
    
-    #print(f"{args}")
-    #print(f"{type(args)}")
-
-
 
     ## ##############################################
     ##  conditions for a node to report back "OK":
@@ -342,8 +335,9 @@ def main():
     ##  less than 2 peers gives a critical
     ##  less than 2 boot peers gives a warning
     ##  less than 1 boot peers gives a critical
+    ##  btc connectivity MUST be 1, or get a critical warning.
     ##  eth connectivity MUST be 1, or get a critical warning.
-    ##  pp file count must exceed 1000 or get a warning 
+    ##  pp file count must exceed 1000 or get a warning ##  FIXME, i think its >=500
     ## 
     
     check = nagiosplugin.Check(checkNode(args.nodeip, args.port, args.owner),
