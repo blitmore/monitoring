@@ -75,7 +75,7 @@ class checkNode(nagiosplugin.Resource):
                     return False
 
         except Exception as e:
-            print(f"\t retrieveNodeData ERROR: {e}\n{self.nodeip}:{self.port}")
+            print(f"\t retrieveNodeData {mode} ERROR: {e}\n{self.nodeip}:{self.port}")
 
 
     def validIP(self):
@@ -223,7 +223,7 @@ class checkNode(nagiosplugin.Resource):
     def probe(self):
         _log.info('self.probe: checking node: %s:%i', self.nodeip, self.port)
         self.retrieveNodeData(self, 'metrics')
-        #self.retrieveNodeData(self, 'diagnostics')
+        self.retrieveNodeData(self, 'diagnostics')
 
         #_log.info('%s', self.client_version)
         #_log.info('connectivity: %s', self.eth_connectivity)
